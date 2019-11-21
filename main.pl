@@ -16,18 +16,44 @@ start() :-
     ).
 
 invest(StartingCapital) :-
-    write("We recommend diversiving into the top 3 coins: BTC, ETH, and XRP"),
-    % TODO Get user time: 1, 5 or 10 years
-
-    % Calculate profit based on time 
-    % profit = finalValue - currentValue
-    % where currentValue = 3rd Party API call to coinGecko  
-    % where finalValue = the best combination of coins based on the future predicted value
+    write("Your budget is: "),
+    write(StartingCapital),
     nl,
-    ( StartingCapital =:= 10000 -> 
-        write("Your budget is 10000 USD")
-    ; StartingCapital =:= 1000 -> 
-        write("Your budget is 1000 USD, we recommend diversiving into the top 3 coins: BTC, ETH, and XRP")
-    ; StartingCapital =:= 100 ->
-        write("Your budget is 100 USD, we recommend diversiving into the top 3 coins: BTC, ETH, and XRP")
-    ).
+    write("We recommend diversiving into the top 3 coins: BTC, ETH, and XRP"),
+    nl,
+    print_current_prices(),
+    nl.
+
+print_current_prices() :-
+    get_current_prices(BTCPrice, ETHPrice, XRPPrice),
+    write("The current price of: "),
+    nl,
+    write("Bitcoin (BTC) is: "),
+    write(BTCPrice),
+    nl,
+    write("Ethereum (ETH) is: "),
+    write(ETHPrice),
+    nl,
+    write("XRP is: "),
+    write(XRPPrice).
+
+
+get_current_prices(BTCPrice, ETHPrice, XRPPrice) :-
+    get_current_price_from_api(Data),
+    BTCPriceObj = Data.get(bitcoin),
+    ETHPriceObj = Data.get(ethereum),
+    XRPRiceObj = Data.get(ripple),
+    BTCPrice = BTCPriceObj.get(usd),
+    ETHPrice = ETHPriceObj.get(usd),
+    XRPPrice = XRPRiceObj.get(usd).
+
+get_current_price_from_api(Data) :-
+    URL = "https://api.coingecko.com/api/v3/simple/price?ids=ethereum,ripple,bitcoin&vs_currencies=usd",
+    setup_call_cleanup(
+        http_open(URL, In, []),
+        json_read_dict(In, Data),
+        close(In)).
+
+% Cryptocurrency Historical Data following:
+% currencyName(allTimeHigh)
+bitcoin(19665).
