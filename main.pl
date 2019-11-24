@@ -2,20 +2,6 @@
 :- use_module(library(http/http_open)).
 :- use_module(library(date)).
 
-start() :- 
-    write("Please provide your risk tolerance: type 0 for low or 1 for high (Type in quotes)"),
-    nl,
-    read(Risk),
-    (Risk =:= 1 ->
-        write("You are ready to invest! Provide your budget: type 100, 1000, or 10000 USD"),
-        nl,
-        read(StartingCapital),
-        invest(StartingCapital)
-    ;   
-        write("Sorry, we advice not to participate in crypto investing."),
-        fail
-    ).
-
 invest(StartingCapital) :-
     write("Your budget is: "),
     write(StartingCapital),
@@ -29,9 +15,14 @@ invest(StartingCapital) :-
             write(" BTC"),
             nl,
             computeScore(CoinScore),
+            analyzePriceTrend(BTCPriceRounded, YesterdayPrice, LastMonthPrice, LastYearPrice, Trend),
+            % analyzePriceTrend(8000, YesterdayPrice, LastMonthPrice, LastYearPrice, Trend),
             write("CoinScore is: "),
             write(CoinScore),
-            % TODO: analyzePriceTrend(PriceTrend),
+            nl,
+            write("PriceTrend is: "),
+            write(Trend),
+            % TODO: provideAdvice(CoinScore, Trend),
             nl
         ;
             write("Insufficient funds."),
@@ -61,7 +52,7 @@ get_current_price_from_api(Data) :-
         json_read_dict(In, Data),
         close(In)).
 
-get_historical_prices(YesterdayPrice, LastMonthPrice, LastYearPrice) :-
+analyzePriceTrend(BTCPriceRounded, YesterdayPrice, LastMonthPrice, LastYearPrice, Trend) :-
     get_time(Stamp),
     stamp_date_time(Stamp, DateTime, local),
     date_time_value(year, DateTime, Year),
@@ -78,12 +69,41 @@ get_historical_prices(YesterdayPrice, LastMonthPrice, LastYearPrice) :-
         LastMonth is Month-1
     ),
     LastYear is Year-1,
+
     get_coin_price_from_api(YesterdayData, "bitcoin", Yesterday, Month, Year),
     YesterdayMarketDataObj = YesterdayData.get(market_data),
     YesterdayPriceObj = YesterdayMarketDataObj.get(current_price),
     YesterdayPrice = YesterdayPriceObj.get(usd),
-    write(YesterdayPrice).
 
+    get_coin_price_from_api(LastMonthData, "bitcoin", 25, LastMonth, Year),
+    LastMonthMarketDataObj = LastMonthData.get(market_data),
+    LastMonthPriceObj = LastMonthMarketDataObj.get(current_price),
+    LastMonthPrice = LastMonthPriceObj.get(usd),
+
+    get_coin_price_from_api(LastYearData, "bitcoin", 25, Month, LastYear),
+    LastYearMarketDataObj = LastYearData.get(market_data),
+    LastYearPriceObj = LastYearMarketDataObj.get(current_price),
+    LastYearPrice = LastYearPriceObj.get(usd),
+
+    DayTrend is BTCPriceRounded - YesterdayPrice,
+    MonthTrend is BTCPriceRounded - LastMonthPrice,
+    YearTrend is BTCPriceRounded - LastYearPrice,
+    Trend0 is 0,
+    (DayTrend > 0 ->
+        Trend1 is Trend0 + 1
+    ;
+        Trend1 is Trend0 - 1
+    ),
+    (MonthTrend > 0 ->
+        Trend2 is Trend1 + 1
+    ;
+        Trend2 is Trend1 - 1
+    ),
+    (YearTrend > 0 ->
+        Trend is Trend2 + 1
+    ;
+        Trend is Trend2 - 1
+    ).
 
 get_coin_price_from_api(Data, CoinName, Day, Month, Year) :-
     URLv1 = "https://api.coingecko.com/api/v3/coins/",
@@ -94,9 +114,6 @@ get_coin_price_from_api(Data, CoinName, Day, Month, Year) :-
     string_concat(URLv5, Month, URLv6),
     string_concat(URLv6, "-", URLv7),
     string_concat(URLv7, Year, URL),
-    nl,
-    write(URL),
-    nl,
     setup_call_cleanup(
         http_open(URL, In, []),
         json_read_dict(In, Data),
@@ -127,7 +144,3 @@ avg(List, Average):-
     length(List, Length),
     Length > 0, 
     Average is Sum / Length.
-
-% ~~~~~~~~~~~~~~~~~~~~~~~~~~
-% Finds overall price trend
-% ~~~~~~~~~~~~~~~~~~~~~~~~~~
