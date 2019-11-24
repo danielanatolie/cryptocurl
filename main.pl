@@ -1,5 +1,6 @@
 :- use_module(library(http/json)).
 :- use_module(library(http/http_open)).
+:- use_module(library(date)).
 
 start() :- 
     write("Please provide your risk tolerance: type 0 for low or 1 for high (Type in quotes)"),
@@ -60,7 +61,47 @@ get_current_price_from_api(Data) :-
         json_read_dict(In, Data),
         close(In)).
 
-% get_last_week_price(BTCPrice, W) :-
+get_historical_prices(YesterdayPrice, LastMonthPrice, LastYearPrice) :-
+    get_time(Stamp),
+    stamp_date_time(Stamp, DateTime, local),
+    date_time_value(year, DateTime, Year),
+    date_time_value(month, DateTime, Month),
+    date_time_value(day, DateTime, Day),
+    (Day =:= 1 ->
+        Yesterday is 25
+    ;
+        Yesterday is Day-1
+    ),
+    (Month =:= 1 ->
+        LastMonth is  12
+    ;
+        LastMonth is Month-1
+    ),
+    LastYear is Year-1,
+    get_coin_price_from_api(YesterdayData, "bitcoin", Yesterday, Month, Year),
+    YesterdayMarketDataObj = YesterdayData.get(market_data),
+    YesterdayPriceObj = YesterdayMarketDataObj.get(current_price),
+    YesterdayPrice = YesterdayPriceObj.get(usd),
+    write(YesterdayPrice).
+
+
+get_coin_price_from_api(Data, CoinName, Day, Month, Year) :-
+    URLv1 = "https://api.coingecko.com/api/v3/coins/",
+    string_concat(URLv1, CoinName, URLv2),
+    string_concat(URLv2, "/history?date=", URLv3),
+    string_concat(URLv3, Day, URLv4),
+    string_concat(URLv4, "-", URLv5),
+    string_concat(URLv5, Month, URLv6),
+    string_concat(URLv6, "-", URLv7),
+    string_concat(URLv7, Year, URL),
+    nl,
+    write(URL),
+    nl,
+    setup_call_cleanup(
+        http_open(URL, In, []),
+        json_read_dict(In, Data),
+        close(In)).
+
 
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~
 % Finds overall coin score
