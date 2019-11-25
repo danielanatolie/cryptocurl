@@ -1,0 +1,65 @@
+Input and output test cases for crytocurrency program
+
+TEST CASE 1 (StartingCapital less then value of one coin. Insufficient funds message)
+input: 
+?- invest(1000, bitcoin).
+
+output:
+Your budget is: 1000
+The current price of bitcoin is: 6753.63
+Insufficient funds.
+false.
+
+TEST CASE 2 (CoinName not in quotations)
+input: 
+?- invest(1000000, bitcoin).
+
+output:
+Your budget is: 1000000
+The current price of bitcoin is: 6753.63
+You'll be able to purchase: 148 bitcoin
+CoinScore is: 87
+PriceTrend is: -1
+Right now is a good time to buy! Your investment has a chance to make between x2 to x10 gains within 1 - 5 years.
+
+TEST CASE 3 (CoinName in quotations)
+input:
+?- invest(1000000, "bitcoin").
+
+output:
+Your budget is: 1000000
+The current price of bitcoin is: 6753.63
+You'll be able to purchase: 148 bitcoin
+CoinScore is: 87
+PriceTrend is: -1
+Right now is a good time to buy! Your investment has a chance to make between x2 to x10 gains within 1 - 5 years.
+
+TEST CASE 4 (entering an invalid CoinName)
+input:
+?- invest(1000000, hello).
+
+output:
+Your budget is: 1000000
+false.
+
+TEST CASE 5 (entering a negative value for StartingCapital)
+input:
+?- invest(-1000000, ethereum).
+
+output:
+Your budget is: -1000000
+The current price of ethereum is: 137.69
+Insufficient funds.
+false.
+
+TEST CASE 6 (entering a random whole number greater then 0 and greater then 1 coin value)
+input:
+?- invest(82340, ethereum).
+
+output:
+Your budget is: 82340
+The current price of ethereum is: 137.67
+You'll be able to purchase: 596 ethereum
+CoinScore is: 74
+PriceTrend is: -1
+Right now is a good time to buy! Your investment has a chance to make between x2 to x10 gains within 1 - 5 years.
