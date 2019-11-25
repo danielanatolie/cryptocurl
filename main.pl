@@ -7,16 +7,17 @@ invest(StartingCapital, CoinName) :-
     write(StartingCapital),
     nl,
     print_current_prices(CoinName, Price),
+    %supportedCoins(list),
     (StartingCapital >= Price ->
             round(Price, PriceRounded),
             write("You'll be able to purchase: "),
-            BTCAmount is div(StartingCapital, PriceRounded),
-            write(BTCAmount), 
+            CoinAmount is div(StartingCapital, PriceRounded),
+            write(CoinAmount), 
             write(" "),
             write(CoinName),
             nl,
             computeScore(CoinName, CoinScore),
-            analyzePriceTrend(CoinName, PriceRounded, YesterdayPrice, LastMonthPrice, LastYearPrice, Trend),
+            analyzePriceTrend(CoinName, PriceRounded, _, _, _, Trend),
             write("CoinScore is: "),
             write(CoinScore),
             nl,
@@ -26,7 +27,7 @@ invest(StartingCapital, CoinName) :-
             provideAdvice(CoinScore, Trend),
             nl
         ;
-            write("Insufficient funds."),
+            write("Invalid input."),
             fail
         ).    
 
@@ -34,15 +35,12 @@ print_current_prices(CoinName, Price) :-
     get_current_prices(CoinName, Price),
     write("The current price of "),
     write(CoinName),
-    write("is: "),
+    write(" is: "),
     write(Price),
     nl.
 
-test(String, Atom) :-
-    atom_string(Atom, String).
-
 % ~~~~~~~~~~~~~~~
-% Get BTC prices
+% Get Coin prices
 % ~~~~~~~~~~~~~~~
 get_current_prices(CoinNameStr, Price) :-
     get_current_price_from_api(CoinNameStr, Data),
@@ -59,6 +57,9 @@ get_current_price_from_api(CoinName, Data) :-
         json_read_dict(In, Data),
         close(In)).
 
+% ~~~~~~~~~~~~~~~~~~~
+% Analyze coin prices
+% ~~~~~~~~~~~~~~~~~~~
 analyzePriceTrend(CoinName, PriceRounded, YesterdayPrice, LastMonthPrice, LastYearPrice, Trend) :-
     get_time(Stamp),
     stamp_date_time(Stamp, DateTime, local),
@@ -126,9 +127,9 @@ get_coin_price_from_api(Data, CoinName, Day, Month, Year) :-
         json_read_dict(In, Data),
         close(In)).
 
-% ~~~~~~~~~~~~~~~~~~~~~~~~~~
+% ~~~~~~~~~~~~~~~~~~~~~~~~
 % Finds overall coin score
-% ~~~~~~~~~~~~~~~~~~~~~~~~~~
+% ~~~~~~~~~~~~~~~~~~~~~~~~
 computeScore(CoinName, CoinScoreRounded) :-
     get_coin_data_from_api(CoinName, Data),
     DeveloperScore = Data.get(developer_score),
@@ -152,7 +153,7 @@ avg(List, Average):-
     Length > 0, 
     Average is Sum / Length.
 
-% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 % Provides Buy or Sell Suggestion
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 provideAdvice(CoinScore, Trend) :- 
@@ -160,6 +161,40 @@ provideAdvice(CoinScore, Trend) :-
         write("Right now is a good time to buy! Your investment has a chance to make between x2 to x10 gains within 1 - 5 years."),
         nl
     ;
-        write("This is a bad investment. You are likely to lose money"),
+        write("This is a bad investment. You are likely to lose money."),
         nl
     ).
+
+% ~~~~~~~~~~~~~~~
+% Lists top coins 
+% ~~~~~~~~~~~~~~~
+get_top_list():-
+    write("Currently for the most popular coins in the market,"),
+    nl,
+    write("the price is:"),
+    nl,
+    for_every(['bitcoin','ethereum','litecoin','monero','neo','dash']).         
+
+get_data_from_api(Data) :-
+    URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,litecoin,Ethereum,neo,monero,dash&vs_currencies=usd",
+    setup_call_cleanup(
+        http_open(URL, In, []),
+        json_read_dict(In, Data),
+        close(In)).
+
+get_values_from_data(X,P):-
+    get_data_from_api(Data),
+    Obj = Data.get(X),
+    P = Obj.get(usd).
+
+for_every([X|T]):-
+    get_values_from_data(X,Price),
+    write_to_user(X,Price),
+    for_every(T).
+
+write_to_user(X,Y) :-
+    write(X),
+    write(" - "),
+    format(atom(A),"~2f",Y),
+    write(A),
+    nl.
