@@ -2,21 +2,21 @@
 :- use_module(library(http/http_open)).
 :- use_module(library(date)).
 
-invest(StartingCapital) :-
+invest(StartingCapital, CoinName) :-
     write("Your budget is: "),
     write(StartingCapital),
     nl,
-    print_current_prices(BTCPrice),
-    (StartingCapital >= BTCPrice ->
-            round(BTCPrice, BTCPriceRounded),
+    print_current_prices(CoinName, Price),
+    (StartingCapital >= Price ->
+            round(Price, PriceRounded),
             write("You'll be able to purchase: "),
-            BTCAmount is div(StartingCapital, BTCPriceRounded),
-            write(BTCAmount),
-            write(" BTC"),
+            BTCAmount is div(StartingCapital, PriceRounded),
+            write(BTCAmount), 
+            write(" "),
+            write(CoinName),
             nl,
-            computeScore(CoinScore),
-            analyzePriceTrend(BTCPriceRounded, YesterdayPrice, LastMonthPrice, LastYearPrice, Trend),
-            % analyzePriceTrend(8000, YesterdayPrice, LastMonthPrice, LastYearPrice, Trend),
+            computeScore(CoinName, CoinScore),
+            analyzePriceTrend(CoinName, PriceRounded, YesterdayPrice, LastMonthPrice, LastYearPrice, Trend),
             write("CoinScore is: "),
             write(CoinScore),
             nl,
@@ -30,30 +30,36 @@ invest(StartingCapital) :-
             fail
         ).    
 
-print_current_prices(BTCPrice) :-
-    get_current_prices(BTCPrice),
-    write("The current price of: "),
-    nl,
-    write("Bitcoin (BTC) is: "),
-    write(BTCPrice),
+print_current_prices(CoinName, Price) :-
+    get_current_prices(CoinName, Price),
+    write("The current price of "),
+    write(CoinName),
+    write("is: "),
+    write(Price),
     nl.
+
+test(String, Atom) :-
+    atom_string(Atom, String).
 
 % ~~~~~~~~~~~~~~~
 % Get BTC prices
 % ~~~~~~~~~~~~~~~
-get_current_prices(BTCPrice) :-
-    get_current_price_from_api(Data),
-    BTCPriceObj = Data.get(bitcoin),
-    BTCPrice = BTCPriceObj.get(usd).
+get_current_prices(CoinNameStr, Price) :-
+    get_current_price_from_api(CoinNameStr, Data),
+    atom_string(CoinNameAtom, CoinNameStr),
+    PriceObj = Data.get(CoinNameAtom),
+    Price = PriceObj.get(usd).
 
-get_current_price_from_api(Data) :-
-    URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",
+get_current_price_from_api(CoinName, Data) :-
+    URLv1 = "https://api.coingecko.com/api/v3/simple/price?ids=",
+    string_concat(URLv1, CoinName, URLv2),
+    string_concat(URLv2, "&vs_currencies=usd", URL),
     setup_call_cleanup(
         http_open(URL, In, []),
         json_read_dict(In, Data),
         close(In)).
 
-analyzePriceTrend(BTCPriceRounded, YesterdayPrice, LastMonthPrice, LastYearPrice, Trend) :-
+analyzePriceTrend(CoinName, PriceRounded, YesterdayPrice, LastMonthPrice, LastYearPrice, Trend) :-
     get_time(Stamp),
     stamp_date_time(Stamp, DateTime, local),
     date_time_value(year, DateTime, Year),
@@ -71,24 +77,24 @@ analyzePriceTrend(BTCPriceRounded, YesterdayPrice, LastMonthPrice, LastYearPrice
     ),
     LastYear is Year-1,
 
-    get_coin_price_from_api(YesterdayData, "bitcoin", Yesterday, Month, Year),
+    get_coin_price_from_api(YesterdayData, CoinName, Yesterday, Month, Year),
     YesterdayMarketDataObj = YesterdayData.get(market_data),
     YesterdayPriceObj = YesterdayMarketDataObj.get(current_price),
     YesterdayPrice = YesterdayPriceObj.get(usd),
 
-    get_coin_price_from_api(LastMonthData, "bitcoin", 25, LastMonth, Year),
+    get_coin_price_from_api(LastMonthData, CoinName, 25, LastMonth, Year),
     LastMonthMarketDataObj = LastMonthData.get(market_data),
     LastMonthPriceObj = LastMonthMarketDataObj.get(current_price),
     LastMonthPrice = LastMonthPriceObj.get(usd),
 
-    get_coin_price_from_api(LastYearData, "bitcoin", 25, Month, LastYear),
+    get_coin_price_from_api(LastYearData, CoinName, 25, Month, LastYear),
     LastYearMarketDataObj = LastYearData.get(market_data),
     LastYearPriceObj = LastYearMarketDataObj.get(current_price),
     LastYearPrice = LastYearPriceObj.get(usd),
 
-    DayTrend is BTCPriceRounded - YesterdayPrice,
-    MonthTrend is BTCPriceRounded - LastMonthPrice,
-    YearTrend is BTCPriceRounded - LastYearPrice,
+    DayTrend is PriceRounded - YesterdayPrice,
+    MonthTrend is PriceRounded - LastMonthPrice,
+    YearTrend is PriceRounded - LastYearPrice,
     Trend0 is 0,
     (DayTrend > 0 ->
         Trend1 is Trend0 + 1
@@ -123,8 +129,8 @@ get_coin_price_from_api(Data, CoinName, Day, Month, Year) :-
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~
 % Finds overall coin score
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~
-computeScore(CoinScoreRounded) :-
-    get_coin_data_from_api(Data),
+computeScore(CoinName, CoinScoreRounded) :-
+    get_coin_data_from_api(CoinName, Data),
     DeveloperScore = Data.get(developer_score),
     CommunityScore = Data.get(community_score),
     round(DeveloperScore, DeveloperScoreRounded),
@@ -132,8 +138,9 @@ computeScore(CoinScoreRounded) :-
     avg([DeveloperScoreRounded, CommunityScoreRounded], CoinScore),
     round(CoinScore, CoinScoreRounded).
 
-get_coin_data_from_api(Data) :-
-    URL = "https://api.coingecko.com/api/v3/coins/bitcoin",
+get_coin_data_from_api(CoinName, Data) :-
+    URLv1 = "https://api.coingecko.com/api/v3/coins/",
+    string_concat(URLv1, CoinName, URL),
     setup_call_cleanup(
         http_open(URL, In, []),
         json_read_dict(In, Data),
