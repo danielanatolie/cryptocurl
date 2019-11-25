@@ -22,7 +22,8 @@ invest(StartingCapital) :-
             nl,
             write("PriceTrend is: "),
             write(Trend),
-            % TODO: provideAdvice(CoinScore, Trend),
+            nl,
+            provideAdvice(CoinScore, Trend),
             nl
         ;
             write("Insufficient funds."),
@@ -119,7 +120,6 @@ get_coin_price_from_api(Data, CoinName, Day, Month, Year) :-
         json_read_dict(In, Data),
         close(In)).
 
-
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~
 % Finds overall coin score
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -144,3 +144,15 @@ avg(List, Average):-
     length(List, Length),
     Length > 0, 
     Average is Sum / Length.
+
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+% Provides Buy or Sell Suggestion
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+provideAdvice(CoinScore, Trend) :- 
+    (CoinScore > 70, member(Trend, [-1,0,1]) ->
+        write("Right now is a good time to buy! Your investment has a chance to make between x2 to x10 gains within 1 - 5 years."),
+        nl
+    ;
+        write("This is a bad investment. You are likely to lose money"),
+        nl
+    ).
