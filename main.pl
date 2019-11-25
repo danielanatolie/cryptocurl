@@ -34,7 +34,7 @@ print_current_prices(CoinName, Price) :-
     get_current_prices(CoinName, Price),
     write("The current price of "),
     write(CoinName),
-    write("is: "),
+    write(" is: "),
     write(Price),
     nl.
 
